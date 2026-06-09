@@ -268,6 +268,7 @@ async def run_tts(
             text_iter=text_iterator(session),
             voice=session.voice,
             prompt_audio_id=session.prompt_audio_id,
+            instructions=session.instructions,
         ):
             if not audio_chunk:
                 continue

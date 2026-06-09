@@ -118,6 +118,21 @@ class SpeechRequest(BaseModel):
         description="Ignored — kept for OpenAI SDK compatibility.",
         ge=0.25, le=4.0,
     )
+    instructions: Optional[str] = Field(
+        default=None,
+        description=(
+            "Voice-style / emotion / speed / language directive "
+            "(CosyVoice3's instruct2 mode; Qwen3-TTS's instruct field). "
+            "Forwarded to vllm-omini as `instructions`. Examples: "
+            "`请用广东话表达`, `请用尽可能快地语速说一句话`, "
+            "`用悲伤的语气朗读`, `Speak slowly and gently`."
+        ),
+        examples=[
+            "请用广东话表达",
+            "请用尽可能快地语速说一句话",
+            "用兴奋的语气",
+        ],
+    )
     request_id: Optional[str] = Field(
         default=None,
         description="Optional client-provided id. If absent, the gateway "
@@ -496,6 +511,7 @@ def create_app(
                     text_iter=_text_iter(),
                     voice=voice or "default",
                     prompt_audio_id=voice,  # treat voice as the speaker name
+                    instructions=body.instructions,
                 ):
                     if chunk:
                         yield chunk
@@ -741,6 +757,7 @@ async def _handle_start(
         # vllm-omini speaker file name.
         voice = _require_str(data, "voice")
         prompt_audio_id = _require_str(data, "prompt_audio_id")
+        instructions = _require_str(data, "instructions")
     except ValueError as e:
         session.send_json(
             {
@@ -768,6 +785,7 @@ async def _handle_start(
     # Either field may carry the speaker name. Engine resolves priority.
     session.voice = voice or "default"
     session.prompt_audio_id = prompt_audio_id or voice
+    session.instructions = instructions
     session.engine_request_id = await request_id_factory.make(
         session.client_id, client_request_id
     )

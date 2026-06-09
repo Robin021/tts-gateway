@@ -71,6 +71,7 @@ class TTSSession:
     # Synthesis params
     voice: str = "default"
     prompt_audio_id: Optional[str] = None
+    instructions: Optional[str] = None
     audio_format: AudioFormat = field(default_factory=lambda: PCM16_24K_MONO)
 
     # Queues

@@ -47,8 +47,16 @@ class TtsBackend(ABC):
         text_iter: AsyncIterator[str],
         voice: str,
         prompt_audio_id: Optional[str],
+        instructions: Optional[str] = None,
     ) -> AsyncIterator[bytes]:
-        """Async generator yielding raw audio bytes."""
+        """Async generator yielding raw audio bytes.
+
+        `instructions` is the voice-style / emotion / speed / language
+        directive (CosyVoice3's `instruct2` mode, Qwen3-TTS's `instruct`
+        field). Backends that don't support it should ignore it.
+        Examples: "请用广东话表达", "请用尽可能快地语速说一句话",
+        "用悲伤的语气朗读".
+        """
         ...
 
     @abstractmethod
@@ -121,6 +129,7 @@ class MockEngine(TtsBackend):
         text_iter: AsyncIterator[str],
         voice: str,
         prompt_audio_id: Optional[str],
+        instructions: Optional[str] = None,
     ) -> AsyncIterator[bytes]:
         abort_ev = asyncio.Event()
         self._aborts[request_id] = abort_ev

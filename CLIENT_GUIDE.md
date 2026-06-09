@@ -88,11 +88,32 @@ with httpx.stream(
 |---|---|---|---|
 | `input` | string | ✓ | 要合成的文本(UTF-8) |
 | `voice` | string | | 音色名称,见"可选音色"。不传用默认 `female` |
+| `instructions` | string | | **语气/情感/方言/语速**指令。见下面"指令(emotion / 方言 / 语速)" |
 | `response_format` | `"pcm"` / `"wav"` | | 默认 `pcm` |
 | `stream` | bool | | 默认 `false` |
 | `model` | string | | OpenAI SDK 兼容用,服务端忽略 |
-| `speed` | number | | OpenAI SDK 兼容用,服务端忽略 |
+| `speed` | number | | OpenAI SDK 兼容用,服务端忽略(用 `instructions` 表达语速) |
 | `request_id` | string | | 客户端可选追踪 ID |
+
+### 指令(emotion / 方言 / 语速)
+
+`instructions` 字段直接透传给 CosyVoice3 的 instruct2 模式。**自然语言**就行,模型自己理解。常见用法:
+
+```json
+{"input": "今天天气真好", "voice": "female", "instructions": "请用广东话表达"}
+{"input": "快跑啊!", "voice": "male", "instructions": "请用尽可能快地语速说一句话"}
+{"input": "我有点难过", "voice": "female", "instructions": "用悲伤的语气朗读"}
+{"input": "Hello world", "voice": "female", "instructions": "Speak slowly and gently"}
+```
+
+模型支持的指令类型(参考官方文档):
+- **语言/方言**:广东话、闽南话、四川话、东北话、上海话等 18+ 种
+- **情感**:开心 / 兴奋 / 悲伤 / 平静 / 严肃 / 撒娇 ...
+- **语速**:快 / 慢 / 正常
+- **音量**:大 / 小
+- **风格**:朗读 / 对话 / 客服 / 主持 ...
+
+实际效果取决于 `voice` 那段参考音频的特征 + 模型能力,建议**先试再用**。
 
 ### 响应
 
@@ -196,7 +217,7 @@ function interrupt() {
 | 事件 | 字段 | 说明 |
 |---|---|---|
 | `auth` | `token`, `client_id?` | 必须是连接后**第一帧**;5 秒不发服务端会断你 |
-| `tts.start` | `request_id`, `voice?` | 一次连接一次会话(start 之后就只能 cancel/end) |
+| `tts.start` | `request_id`, `voice?`, `instructions?` | 一次连接一次会话(start 之后就只能 cancel/end)。`instructions` 见 HTTP 部分"指令"小节,同样语义 |
 | `tts.text` | `text`, `flush?` | 多次累积。`flush:true` 强制冲刷当前句缓存 |
 | `tts.flush` | (无) | 等价于上面的 `flush:true`,但不带文本 |
 | `tts.end` | (无) | 不再有文本,等服务端把最后一段合成完 |

@@ -101,15 +101,18 @@ def test_http_voice_field_forwarded_to_engine():
 
     class CapturingEngine(MockEngine):
         async def stream_tts(
-            self, *, request_id, text_iter, voice, prompt_audio_id
+            self, *, request_id, text_iter, voice, prompt_audio_id,
+            instructions=None,
         ):
             seen["voice"] = voice
             seen["prompt_audio_id"] = prompt_audio_id
+            seen["instructions"] = instructions
             async for c in super().stream_tts(
                 request_id=request_id,
                 text_iter=text_iter,
                 voice=voice,
                 prompt_audio_id=prompt_audio_id,
+                instructions=instructions,
             ):
                 yield c
 
@@ -118,10 +121,45 @@ def test_http_voice_field_forwarded_to_engine():
             chunks_per_sentence=1, per_chunk_delay_s=0.001,
             first_chunk_extra_delay_s=0.0,
         ))
-        r = await _post(app, {"input": "你好", "voice": "linzhiling"})
+        r = await _post(app, {
+            "input": "你好",
+            "voice": "linzhiling",
+            "instructions": "请用广东话表达,语气兴奋",
+        })
         assert r.status_code == 200
         assert seen["prompt_audio_id"] == "linzhiling"
+        assert seen["instructions"] == "请用广东话表达,语气兴奋"
 
+    asyncio.run(_())
+
+
+def test_http_instructions_field_optional():
+    """instructions is optional — engine should see None when not passed."""
+    seen: dict = {}
+
+    class CapturingEngine(MockEngine):
+        async def stream_tts(
+            self, *, request_id, text_iter, voice, prompt_audio_id,
+            instructions=None,
+        ):
+            seen["instructions"] = instructions
+            async for c in super().stream_tts(
+                request_id=request_id,
+                text_iter=text_iter,
+                voice=voice,
+                prompt_audio_id=prompt_audio_id,
+                instructions=instructions,
+            ):
+                yield c
+
+    async def _():
+        app = _make_app(engine=CapturingEngine(
+            chunks_per_sentence=1, per_chunk_delay_s=0.001,
+            first_chunk_extra_delay_s=0.0,
+        ))
+        r = await _post(app, {"input": "你好", "voice": "female"})
+        assert r.status_code == 200
+        assert seen["instructions"] is None
     asyncio.run(_())
 
 

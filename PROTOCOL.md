@@ -38,12 +38,16 @@ the server closes the connection.
 ### tts.start
 
 ```json
-{"type": "tts.start", "request_id": "abc", "voice": "female"}
+{"type": "tts.start", "request_id": "abc", "voice": "female", "instructions": "请用广东话表达"}
 ```
 
 `request_id` is required. `voice` is the vllm-omini speaker name (the
 file name under `/root/.cache/vllm-omni/speakers/` without extension).
 If unset, the gateway uses its configured `default_voice`.
+
+`instructions` is optional — a voice-style / emotion / speed / language
+directive (CosyVoice3's instruct2 mode). Examples:
+`请用广东话表达`, `请用尽可能快地语速说一句话`, `用悲伤的语气朗读`.
 
 For backwards compatibility, `prompt_audio_id` is accepted as an alias
 for `voice` — they map to the same vllm-omini speaker file. New

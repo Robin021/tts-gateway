@@ -140,6 +140,7 @@ class VllmOminiEngine(TtsBackend):
         text_iter: AsyncIterator[str],
         voice: str,
         prompt_audio_id: Optional[str],
+        instructions: Optional[str] = None,
     ) -> AsyncIterator[bytes]:
         if self._client is None:
             raise RuntimeError("VllmOminiEngine.load() was not called")
@@ -171,6 +172,12 @@ class VllmOminiEngine(TtsBackend):
             "stream": True,
             "stream_format": "audio",
         }
+        # Optional voice-style / emotion / speed / language directive.
+        # CosyVoice3's instruct2 mode; Qwen3-TTS's `instruct` field.
+        # vllm-omini accepts `instructions` (per its OpenAPI schema) and
+        # forwards it to the model's instruct path.
+        if instructions:
+            payload["instructions"] = instructions
 
         logger.info(
             "vllm-omini synth request_id=%s voice=%s text_len=%d",
