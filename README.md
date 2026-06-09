@@ -237,6 +237,25 @@ GATEWAY_AUTH_TOKEN="$GATEWAY_AUTH_TOKEN" bash scripts/deploy_h20.sh
 remote, builds the Docker image, and (re)starts the container with
 `--restart always`. Re-run any time you push code; it's idempotent.
 
+**Multiple tokens (one per client):** comma-separate them. Each
+client gets one; revoke a single client by re-deploying without that
+token in the list. Make sure to save them — re-deploy overwrites
+whatever was running.
+
+```bash
+# Generate N tokens, all valid simultaneously. Re-running this
+# rotates ALL tokens, so save the output first.
+GATEWAY_AUTH_TOKEN="$(openssl rand -hex 32),$(openssl rand -hex 32)" \
+    bash /Users/robin/TTS_streaming/scripts/deploy_h20.sh
+```
+
+**Recover the currently-active token(s):** if you lost track, read
+them out of the running container — no need to redeploy:
+
+```bash
+ssh root@<gateway-host> 'docker exec tts-gateway env | grep GATEWAY_AUTH_TOKEN'
+```
+
 **On H20 directly** (if you don't have the laptop-side toolchain):
 
 ```bash
@@ -273,7 +292,7 @@ docker run -d \
     --name tts-gateway --restart always \
     -p 8000:8000 \
     -e GATEWAY_AUTH_TOKEN=<your-token> \
-    -e VLLM_OMINI_URL=http://221.194.152.20:8091 \
+    -e VLLM_OMINI_URL=http://<gateway-host>:8091 \
     -e VLLM_OMINI_VOICE=female \
     tts-gateway:latest
 ```

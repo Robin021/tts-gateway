@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-REMOTE="${REMOTE:-root@221.194.152.20}"
+REMOTE="${REMOTE:?REMOTE env var must be set, e.g. REMOTE=root@<gateway-host> ...}"
 
 # 如果你已经在 H20 上跑这个脚本,设 LOCAL=1 跳过 ssh
 LOCAL="${LOCAL:-0}"
@@ -75,15 +75,16 @@ docker run -d \
 docker ps --filter name=cosyvoice3-tts --format "  {{.Status}}  {{.Image}}  {{.Names}}"'
 
 echo
-echo "=== 4. 等容器健康(约 60-90s 加载模型) ==="
-for i in $(seq 1 45); do
-    if run 'curl -fsS -o /dev/null http://localhost:8091/v1/models' 2>/dev/null; then
+echo "=== 4. 等容器健康(约 60-150s 加载模型) ==="
+# vllm-omni 加载完才会响应 /v1/audio/voices, 用它做 ready 信号
+for i in $(seq 1 75); do
+    if run 'curl -fsS http://localhost:8091/v1/audio/voices 2>/dev/null | grep -q voices'; then
         echo "  ✓ vllm-omini ready (took ~$((i*2))s)"
         break
     fi
     sleep 2
-    if [ $((i % 5)) = 0 ]; then
-        echo "  waiting ($((i*2))s)..."
+    if [ $((i % 15)) = 0 ]; then
+        echo "  waiting ($((i*2))s) ..."
     fi
 done
 

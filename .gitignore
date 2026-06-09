@@ -21,3 +21,5 @@ linzhiling_test.wav
 
 # OS
 .DS_Store
+.env.local
+DEPLOYMENT.md

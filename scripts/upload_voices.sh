@@ -96,4 +96,4 @@ echo
 echo "=== ALL DONE ==="
 echo "测试 wav 在 /tmp/{female,male,linzhiling}_test.wav"
 echo "scp 回 Mac 听:"
-echo "  scp 'root@221.194.152.20:/tmp/*_test.wav' ~/Downloads/"
+echo "  scp 'root@<gateway-host>:/tmp/*_test.wav' ~/Downloads/"

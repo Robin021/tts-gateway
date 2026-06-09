@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-REMOTE="${REMOTE:-root@221.194.152.20}"
+REMOTE="${REMOTE:?REMOTE env var must be set, e.g. REMOTE=root@<gateway-host> ...}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/tts-gateway}"
 GATEWAY_AUTH_TOKEN="${GATEWAY_AUTH_TOKEN:-}"
 VLLM_OMINI_URL="${VLLM_OMINI_URL:-http://localhost:8091}"
@@ -113,6 +113,6 @@ ssh "$REMOTE" 'docker logs --tail=20 tts-gateway'
 
 echo
 echo "=== DONE ==="
-echo "WebSocket:  ws://221.194.152.20:8000/ws/tts"
-echo "HTTP TTS:   POST http://221.194.152.20:8000/v1/audio/speech"
+echo "WebSocket:  ws://${REMOTE_HOST:-<gateway-host>}:8000/ws/tts"
+echo "HTTP TTS:   POST http://${REMOTE_HOST:-<gateway-host>}:8000/v1/audio/speech"
 echo "Auth:       Authorization: Bearer <GATEWAY_AUTH_TOKEN>"
