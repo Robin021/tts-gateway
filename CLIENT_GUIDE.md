@@ -88,32 +88,38 @@ with httpx.stream(
 |---|---|---|---|
 | `input` | string | ✓ | 要合成的文本(UTF-8) |
 | `voice` | string | | 音色名称,见"可选音色"。不传用默认 `female` |
-| `instructions` | string | | **语气/情感/方言/语速**指令。见下面"指令(emotion / 方言 / 语速)" |
+| `instructions` | string | | **语气/情感/方言/语速等指令**。自然语言,见下方"通过 instructions 控制风格" |
 | `response_format` | `"pcm"` / `"wav"` | | 默认 `pcm` |
 | `stream` | bool | | 默认 `false` |
 | `model` | string | | OpenAI SDK 兼容用,服务端忽略 |
 | `speed` | number | | OpenAI SDK 兼容用,服务端忽略(用 `instructions` 表达语速) |
 | `request_id` | string | | 客户端可选追踪 ID |
 
-### 指令(emotion / 方言 / 语速)
+### 通过 instructions 控制风格(方言/情感/语速)
 
-`instructions` 字段直接透传给 CosyVoice3 的 instruct2 模式。**自然语言**就行,模型自己理解。常见用法:
+任意自然语言指令,网关会包装成 CosyVoice3 的 instruct2 prompt 格式后送给模型。常见用法:
 
 ```json
 {"input": "今天天气真好", "voice": "female", "instructions": "请用广东话表达"}
-{"input": "快跑啊!", "voice": "male", "instructions": "请用尽可能快地语速说一句话"}
-{"input": "我有点难过", "voice": "female", "instructions": "用悲伤的语气朗读"}
-{"input": "Hello world", "voice": "female", "instructions": "Speak slowly and gently"}
+{"input": "快跑啊!", "voice": "male", "instructions": "请用尽可能快的语速说"}
+{"input": "我有点难过", "voice": "linzhiling", "instructions": "用悲伤的语气朗读"}
+{"input": "Hello world", "voice": "female", "instructions": "用兴奋的语气"}
 ```
 
-模型支持的指令类型(参考官方文档):
-- **语言/方言**:广东话、闽南话、四川话、东北话、上海话等 18+ 种
-- **情感**:开心 / 兴奋 / 悲伤 / 平静 / 严肃 / 撒娇 ...
-- **语速**:快 / 慢 / 正常
-- **音量**:大 / 小
-- **风格**:朗读 / 对话 / 客服 / 主持 ...
+模型支持的指令大类(参考 [CosyVoice3 官方文档](https://github.com/FunAudioLLM/CosyVoice)):
+- **语言/方言**: 粤语 / 四川话 / 东北话 / 上海话 / 闽南话 等 18+ 种
+- **情感**: 兴奋 / 悲伤 / 平静 / 严肃 / 撒娇 ...
+- **语速**: 快 / 慢
+- **音量 / 风格**: 朗读 / 对话 / 客服 ...
 
-实际效果取决于 `voice` 那段参考音频的特征 + 模型能力,建议**先试再用**。
+⚠️ **实测发现**: 不同 `voice` 对同一指令的响应度不同。例如:
+- `female_*` 对各种指令响应都不错
+- `male` + 粤语 / 四川话 / 快语速 → 输出可能糊
+- 建议:重要场景**先试再用**;客户端最好准备 fallback 机制(指令不灵就降级回普通音色)
+
+⚠️ **短文本可能早停**: 输入 < 10 字时,模型偶尔会过早停止合成,只输出一两个字。如果客户端需要短句合成,**让文本长度 > 10 字**(可以在末尾加个适当的语气词如"啊"、"哦"等)。
+
+如果你希望**固定常用风格的快捷入口**,运维也预先上传了一些"组合 voice"(例如 `female_cantonese` = female 音色固定说粤语),见下方"可选音色"。
 
 ### 响应
 
@@ -285,24 +291,31 @@ curl http://<gateway-host>:8000/v1/audio/voices \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-返回:
+返回 `voices` 数组里的字符串,就是你能传给 `voice` 字段的合法值。
 
-```json
-{
-  "voices": ["female", "male", "linzhiling"],
-  "uploaded_voices": [...]
-}
-```
+**当前预置**:
 
-`voices` 数组里的字符串就是你能传到 `voice` 字段的合法值。当前预置三个:
-
+基础音色(zero_shot,纯克隆):
 | voice | 备注 |
 |---|---|
-| `female` | 默认,标准女声 |
-| `male` | 标准男声 |
+| `female` | 默认,标准女声(普通话) |
+| `male` | 标准男声(普通话) |
 | `linzhiling` | 特色音色(克隆林志玲) |
 
-要新增音色找服务方上传(参考音频 + 文字稿),我们就能给你一个新的 voice 名。
+风格变体(同样的录音,但 ref_text 烧入了不同 instruction):
+| voice | 效果 |
+|---|---|
+| `female_cantonese` | 粤语女声 |
+| `female_sichuan` | 四川话女声 |
+| `female_excited` / `male_excited` | 兴奋语气 |
+| `female_sad` / `male_sad` | 悲伤语气 |
+| `female_fast` | 快语速女声 |
+| `female_slow` | 慢语速女声 |
+| `male_calm` | 沉稳冷静男声 |
+
+> **没列在表里的组合不要用**。例如 `male_cantonese`(合成失败)、`male_fast`(语音糊成一团)等是模型对该男声参考音频 + 该指令的组合学不出有效输出,运维已从 voice 列表里移除。
+
+要新增音色或风格变体,找运维上传(参考音频 + 指令 → 新 voice 名)。
 
 ---
 

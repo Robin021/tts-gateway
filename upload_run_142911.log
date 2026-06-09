@@ -1,0 +1,238 @@
+=== files ===
+-rw-r--r-- 1 501 staff 327K Jun  8 18:39 female.wav
+-rw-rw-r-- 1 501 staff 607K Jun  4 15:41 linzhiling.wav
+-rw-r--r-- 1 501 staff 593K Jun  8 18:38 male.wav
+
+=== cleanup ===
+  DELETE female -> 200
+  DELETE male -> 200
+  DELETE linzhiling -> 200
+  DELETE test_voice_v3 -> 404
+  DELETE female_cantonese_test -> 404
+  DELETE male_cantonese -> 200
+  DELETE male_sichuan -> 200
+  DELETE male_fast -> 200
+  DELETE female_cantonese -> 200
+  DELETE female_sichuan -> 200
+  DELETE female_excited -> 200
+  DELETE female_sad -> 200
+  DELETE female_fast -> 200
+  DELETE female_slow -> 200
+  DELETE male_excited -> 200
+  DELETE male_sad -> 200
+  DELETE male_calm -> 200
+
+=== upload base voices (zero_shot mode, normal cloning) ===
+  upload female ...
+{"success":true,"voice":{"name":"female","consent":"acknowledged","created_at":1780986551,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant.<|endofprompt|>希望你以后能够做的比我还好哟"}}    -> http=200
+  upload male ...
+{"success":true,"voice":{"name":"male","consent":"acknowledged","created_at":1780986552,"mime_type":"audio/wav","file_size":606404,"ref_text":"You are a helpful assistant.<|endofprompt|>在那之后完全收购那家公司,因此保持管理层的一致性,利益与即将加入家族的资产保持一致。这就是我们有时不买下全部的原因。"}}    -> http=200
+  upload linzhiling ...
+{"success":true,"voice":{"name":"linzhiling","consent":"acknowledged","created_at":1780986553,"mime_type":"audio/wav","file_size":621006,"ref_text":"You are a helpful assistant.<|endofprompt|>现在这通是甜蜜的来电哦!现在请先把所有的不愉快抛开,穿起美丽的衣服,带着幸福的微笑,还有你最愉快的心情,接电话咯!"}}    -> http=200
+
+=== upload female variants (instruct2 hack via ref_text) ===
+  upload female_cantonese ...
+{"success":true,"voice":{"name":"female_cantonese","consent":"acknowledged","created_at":1780986554,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant. 请用广东话表达。<|endofprompt|>"}}    -> http=200
+  upload female_sichuan ...
+{"success":true,"voice":{"name":"female_sichuan","consent":"acknowledged","created_at":1780986555,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant. 请用四川话表达。<|endofprompt|>"}}    -> http=200
+  upload female_excited ...
+{"success":true,"voice":{"name":"female_excited","consent":"acknowledged","created_at":1780986556,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant. 请用兴奋的语气说。<|endofprompt|>"}}    -> http=200
+  upload female_sad ...
+{"success":true,"voice":{"name":"female_sad","consent":"acknowledged","created_at":1780986557,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant. 请用悲伤的语气说。<|endofprompt|>"}}    -> http=200
+  upload female_fast ...
+{"success":true,"voice":{"name":"female_fast","consent":"acknowledged","created_at":1780986558,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant. 请用尽可能快的语速说。<|endofprompt|>"}}    -> http=200
+  upload female_slow ...
+{"success":true,"voice":{"name":"female_slow","consent":"acknowledged","created_at":1780986559,"mime_type":"audio/wav","file_size":334138,"ref_text":"You are a helpful assistant. 请用缓慢的语速说。<|endofprompt|>"}}    -> http=200
+
+=== upload male variants ===
+  upload male_excited ...
+{"success":true,"voice":{"name":"male_excited","consent":"acknowledged","created_at":1780986560,"mime_type":"audio/wav","file_size":606404,"ref_text":"You are a helpful assistant. 请用兴奋的语气说。<|endofprompt|>"}}    -> http=200
+  upload male_sad ...
+{"success":true,"voice":{"name":"male_sad","consent":"acknowledged","created_at":1780986561,"mime_type":"audio/wav","file_size":606404,"ref_text":"You are a helpful assistant. 请用悲伤的语气说。<|endofprompt|>"}}    -> http=200
+  upload male_calm ...
+{"success":true,"voice":{"name":"male_calm","consent":"acknowledged","created_at":1780986562,"mime_type":"audio/wav","file_size":606404,"ref_text":"You are a helpful assistant. 请用平静沉稳的语气说。<|endofprompt|>"}}    -> http=200
+
+=== voices list ===
+{
+    "voices": [
+        "female",
+        "female_cantonese",
+        "female_excited",
+        "female_fast",
+        "female_sad",
+        "female_sichuan",
+        "female_slow",
+        "linzhiling",
+        "male",
+        "male_calm",
+        "male_excited",
+        "male_sad"
+    ],
+    "uploaded_voices": [
+        {
+            "name": "female",
+            "consent": "acknowledged",
+            "created_at": 1780986551,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant.<|endofprompt|>\u5e0c\u671b\u4f60\u4ee5\u540e\u80fd\u591f\u505a\u7684\u6bd4\u6211\u8fd8\u597d\u54df"
+        },
+        {
+            "name": "male",
+            "consent": "acknowledged",
+            "created_at": 1780986552,
+            "file_size": 606404,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant.<|endofprompt|>\u5728\u90a3\u4e4b\u540e\u5b8c\u5168\u6536\u8d2d\u90a3\u5bb6\u516c\u53f8,\u56e0\u6b64\u4fdd\u6301\u7ba1\u7406\u5c42\u7684\u4e00\u81f4\u6027,\u5229\u76ca\u4e0e\u5373\u5c06\u52a0\u5165\u5bb6\u65cf\u7684\u8d44\u4ea7\u4fdd\u6301\u4e00\u81f4\u3002\u8fd9\u5c31\u662f\u6211\u4eec\u6709\u65f6\u4e0d\u4e70\u4e0b\u5168\u90e8\u7684\u539f\u56e0\u3002"
+        },
+        {
+            "name": "linzhiling",
+            "consent": "acknowledged",
+            "created_at": 1780986553,
+            "file_size": 621006,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant.<|endofprompt|>\u73b0\u5728\u8fd9\u901a\u662f\u751c\u871c\u7684\u6765\u7535\u54e6!\u73b0\u5728\u8bf7\u5148\u628a\u6240\u6709\u7684\u4e0d\u6109\u5feb\u629b\u5f00,\u7a7f\u8d77\u7f8e\u4e3d\u7684\u8863\u670d,\u5e26\u7740\u5e78\u798f\u7684\u5fae\u7b11,\u8fd8\u6709\u4f60\u6700\u6109\u5feb\u7684\u5fc3\u60c5,\u63a5\u7535\u8bdd\u54af!"
+        },
+        {
+            "name": "female_cantonese",
+            "consent": "acknowledged",
+            "created_at": 1780986554,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u5e7f\u4e1c\u8bdd\u8868\u8fbe\u3002<|endofprompt|>"
+        },
+        {
+            "name": "female_sichuan",
+            "consent": "acknowledged",
+            "created_at": 1780986555,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u56db\u5ddd\u8bdd\u8868\u8fbe\u3002<|endofprompt|>"
+        },
+        {
+            "name": "female_excited",
+            "consent": "acknowledged",
+            "created_at": 1780986556,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u5174\u594b\u7684\u8bed\u6c14\u8bf4\u3002<|endofprompt|>"
+        },
+        {
+            "name": "female_sad",
+            "consent": "acknowledged",
+            "created_at": 1780986557,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u60b2\u4f24\u7684\u8bed\u6c14\u8bf4\u3002<|endofprompt|>"
+        },
+        {
+            "name": "female_fast",
+            "consent": "acknowledged",
+            "created_at": 1780986558,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u5c3d\u53ef\u80fd\u5feb\u7684\u8bed\u901f\u8bf4\u3002<|endofprompt|>"
+        },
+        {
+            "name": "female_slow",
+            "consent": "acknowledged",
+            "created_at": 1780986559,
+            "file_size": 334138,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u7f13\u6162\u7684\u8bed\u901f\u8bf4\u3002<|endofprompt|>"
+        },
+        {
+            "name": "male_excited",
+            "consent": "acknowledged",
+            "created_at": 1780986560,
+            "file_size": 606404,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u5174\u594b\u7684\u8bed\u6c14\u8bf4\u3002<|endofprompt|>"
+        },
+        {
+            "name": "male_sad",
+            "consent": "acknowledged",
+            "created_at": 1780986561,
+            "file_size": 606404,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u60b2\u4f24\u7684\u8bed\u6c14\u8bf4\u3002<|endofprompt|>"
+        },
+        {
+            "name": "male_calm",
+            "consent": "acknowledged",
+            "created_at": 1780986562,
+            "file_size": 606404,
+            "mime_type": "audio/wav",
+            "embedding_source": "audio",
+            "embedding_dim": null,
+            "ref_text": "You are a helpful assistant. \u8bf7\u7528\u5e73\u9759\u6c89\u7a33\u7684\u8bed\u6c14\u8bf4\u3002<|endofprompt|>"
+        }
+    ]
+}
+
+=== synth tests (one per voice) ===
+--- voice=female ---
+  http=200  bytes=232320  ttfb=2.584266s
+  saved /tmp/female_test.wav  (4.84s)
+--- voice=male ---
+  http=200  bytes=339840  ttfb=5.076150s
+  saved /tmp/male_test.wav  (7.08s)
+--- voice=linzhiling ---
+  http=200  bytes=243840  ttfb=4.593823s
+  saved /tmp/linzhiling_test.wav  (5.08s)
+--- voice=female_cantonese ---
+  http=200  bytes=234240  ttfb=2.440373s
+  saved /tmp/female_cantonese_test.wav  (4.88s)
+--- voice=female_sichuan ---
+  http=200  bytes=330240  ttfb=3.118562s
+  saved /tmp/female_sichuan_test.wav  (6.88s)
+--- voice=female_excited ---
+  http=200  bytes=234240  ttfb=2.443561s
+  saved /tmp/female_excited_test.wav  (4.88s)
+--- voice=female_sad ---
+  http=200  bytes=220800  ttfb=2.414287s
+  saved /tmp/female_sad_test.wav  (4.60s)
+--- voice=female_fast ---
+  http=200  bytes=243840  ttfb=2.512375s
+  saved /tmp/female_fast_test.wav  (5.08s)
+--- voice=female_slow ---
+  http=200  bytes=180480  ttfb=2.177243s
+  saved /tmp/female_slow_test.wav  (3.76s)
+--- voice=male_excited ---
+  http=200  bytes=921600  ttfb=10.939346s
+  saved /tmp/male_excited_test.wav  (19.20s)
+--- voice=male_sad ---
+  http=200  bytes=293760  ttfb=4.821884s
+  saved /tmp/male_sad_test.wav  (6.12s)
+--- voice=male_calm ---
+  http=200  bytes=501120  ttfb=6.574085s
+  saved /tmp/male_calm_test.wav  (10.44s)
+
+=== DONE ===
+测试 wav 在 /tmp/<voice>_test.wav
+拉回 Mac 听全部:
+  scp 'root@<gateway-host>:/tmp/*_test.wav' ~/Downloads/
+听单个:
+  scp root@<gateway-host>:/tmp/female_cantonese_test.wav ~/Downloads/ && afplay ~/Downloads/female_cantonese_test.wav

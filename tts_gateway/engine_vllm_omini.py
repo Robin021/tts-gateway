@@ -172,12 +172,34 @@ class VllmOminiEngine(TtsBackend):
             "stream": True,
             "stream_format": "audio",
         }
-        # Optional voice-style / emotion / speed / language directive.
-        # CosyVoice3's instruct2 mode; Qwen3-TTS's `instruct` field.
-        # vllm-omini accepts `instructions` (per its OpenAPI schema) and
-        # forwards it to the model's instruct path.
+        # Voice-style / emotion / speed / language directive.
+        #
+        # vllm-omini's cosyvoice3 pipeline doesn't honor the OpenAPI
+        # `instructions` field — confirmed by reading the source
+        # (cosyvoice3/pipeline.py + stage_input_processors/cosyvoice3.py
+        # have zero references to `instructions`). The field is accepted
+        # at the HTTP layer and folded into the cache key, but never
+        # reaches the LLM prompt.
+        #
+        # Workaround: vllm-omini DOES honor per-request `ref_text` (it
+        # overrides the voice's stored ref_text when building the LLM
+        # prompt). We wrap the user's instruction in CosyVoice3's
+        # official instruct2 prompt format and pass it as ref_text.
+        #
+        # Verified on 2026-06-09: a request with
+        #   ref_text="You are a helpful assistant. 请用广东话表达。<|endofprompt|>"
+        # produces actual Cantonese output where the baseline produces
+        # standard Mandarin.
+        #
+        # We also keep forwarding `instructions` for forward compat —
+        # once vllm-omini patches their cosyvoice3 pipeline to read
+        # `instructions` directly, this will Just Work and we can
+        # remove the ref_text wrapping.
         if instructions:
-            payload["instructions"] = instructions
+            payload["ref_text"] = (
+                f"You are a helpful assistant. {instructions}。<|endofprompt|>"
+            )
+            payload["instructions"] = instructions  # forward-compat
 
         logger.info(
             "vllm-omini synth request_id=%s voice=%s text_len=%d",
