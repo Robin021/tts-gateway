@@ -88,38 +88,49 @@ with httpx.stream(
 |---|---|---|---|
 | `input` | string | ✓ | 要合成的文本(UTF-8) |
 | `voice` | string | | 音色名称,见"可选音色"。不传用默认 `female` |
-| `instructions` | string | | **语气/情感/方言/语速等指令**。自然语言,见下方"通过 instructions 控制风格" |
+| `instructions` | string | | ⚠️ **当前后端不支持运行时指令**。要切换情感/方言/语速,**用预上传的 voice 变体**——见下方"通过 voice 切换风格" |
 | `response_format` | `"pcm"` / `"wav"` | | 默认 `pcm` |
 | `stream` | bool | | 默认 `false` |
 | `model` | string | | OpenAI SDK 兼容用,服务端忽略 |
-| `speed` | number | | OpenAI SDK 兼容用,服务端忽略(用 `instructions` 表达语速) |
+| `speed` | number | | OpenAI SDK 兼容用,服务端忽略 |
 | `request_id` | string | | 客户端可选追踪 ID |
 
-### 通过 instructions 控制风格(方言/情感/语速)
+### 通过 voice 切换风格(方言/情感/语速)
 
-任意自然语言指令,网关会包装成 CosyVoice3 的 instruct2 prompt 格式后送给模型。常见用法:
+⚠️ **当前后端 (cosyvoice3 + vllm-omini) 的 `instructions` 参数不可靠**:vllm-omini 在 cosyvoice3 模型路径上没接通这个字段,实测 per-request 注入会**丢字 / 乱码**。
 
-```json
-{"input": "今天天气真好", "voice": "female", "instructions": "请用广东话表达"}
-{"input": "快跑啊!", "voice": "male", "instructions": "请用尽可能快的语速说"}
-{"input": "我有点难过", "voice": "linzhiling", "instructions": "用悲伤的语气朗读"}
-{"input": "Hello world", "voice": "female", "instructions": "用兴奋的语气"}
+唯一稳定的办法是**预上传 voice 变体** —— 把指令固化进 voice 的 ref_text。客户端通过 `voice` 字段切换:
+
+```bash
+# 不要这样写(不稳定):
+{"input": "...", "voice": "female", "instructions": "请用广东话"}
+
+# 这样写(稳定):
+{"input": "...", "voice": "female_cantonese"}
 ```
 
-模型支持的指令大类(参考 [CosyVoice3 官方文档](https://github.com/FunAudioLLM/CosyVoice)):
-- **语言/方言**: 粤语 / 四川话 / 东北话 / 上海话 / 闽南话 等 18+ 种
-- **情感**: 兴奋 / 悲伤 / 平静 / 严肃 / 撒娇 ...
-- **语速**: 快 / 慢
-- **音量 / 风格**: 朗读 / 对话 / 客服 ...
+实测可用变体(后端预上传):
 
-⚠️ **实测发现**: 不同 `voice` 对同一指令的响应度不同。例如:
-- `female_*` 对各种指令响应都不错
-- `male` + 粤语 / 四川话 / 快语速 → 输出可能糊
-- 建议:重要场景**先试再用**;客户端最好准备 fallback 机制(指令不灵就降级回普通音色)
+| voice | 效果 |
+|---|---|
+| `female` / `male` / `linzhiling` | 标准音色,普通话 |
+| `female_cantonese` | 粤语女声 |
+| `female_sichuan` | 四川话女声 |
+| `female_excited` / `male_excited` | 兴奋语气 |
+| `female_sad` / `male_sad` | 悲伤语气 |
+| `female_fast` / `female_slow` | 快/慢语速女声 |
+| `male_calm` | 沉稳男声 |
 
-⚠️ **短文本可能早停**: 输入 < 10 字时,模型偶尔会过早停止合成,只输出一两个字。如果客户端需要短句合成,**让文本长度 > 10 字**(可以在末尾加个适当的语气词如"啊"、"哦"等)。
+调用前查最新列表:
 
-如果你希望**固定常用风格的快捷入口**,运维也预先上传了一些"组合 voice"(例如 `female_cantonese` = female 音色固定说粤语),见下方"可选音色"。
+```bash
+curl http://<gateway-host>:8000/v1/audio/voices \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**新增风格**: 找运维加 voice 变体(参考音频 + 指令 → 新 voice 名),返回你一个新名字。
+
+**未来**: 当 vllm-omini 在 cosyvoice3 模型路径上正确实现 `instructions` 字段后,客户端代码里可以从 `voice="female_cantonese"` 改回 `voice="female" + instructions="请用广东话"`。
 
 ### 响应
 

@@ -174,32 +174,31 @@ class VllmOminiEngine(TtsBackend):
         }
         # Voice-style / emotion / speed / language directive.
         #
-        # vllm-omini's cosyvoice3 pipeline doesn't honor the OpenAPI
-        # `instructions` field — confirmed by reading the source
-        # (cosyvoice3/pipeline.py + stage_input_processors/cosyvoice3.py
-        # have zero references to `instructions`). The field is accepted
-        # at the HTTP layer and folded into the cache key, but never
-        # reaches the LLM prompt.
+        # NOTE (2026-06-09): vllm-omini's cosyvoice3 pipeline does NOT
+        # honor the OpenAPI `instructions` field — confirmed by reading
+        # the source (cosyvoice3/pipeline.py + stage_input_processors/
+        # cosyvoice3.py have zero references to `instructions`).
         #
-        # Workaround: vllm-omini DOES honor per-request `ref_text` (it
-        # overrides the voice's stored ref_text when building the LLM
-        # prompt). We wrap the user's instruction in CosyVoice3's
-        # official instruct2 prompt format and pass it as ref_text.
+        # We tried two workarounds:
         #
-        # Verified on 2026-06-09: a request with
-        #   ref_text="You are a helpful assistant. 请用广东话表达。<|endofprompt|>"
-        # produces actual Cantonese output where the baseline produces
-        # standard Mandarin.
+        #  (a) Per-request `ref_text` override with instruct2-format
+        #      prompt. Result: TEXT IS GARBLED — the model drops the
+        #      first clause and only synthesizes the second half. Even
+        #      with a fixed seed, the same bug reproduces consistently.
+        #      Unusable for production.
         #
-        # We also keep forwarding `instructions` for forward compat —
-        # once vllm-omini patches their cosyvoice3 pipeline to read
-        # `instructions` directly, this will Just Work and we can
-        # remove the ref_text wrapping.
+        #  (b) Pre-upload voice variants with the instruct prompt baked
+        #      into the voice's stored ref_text. Result: STABLE — works
+        #      because vllm-omini extracts embeddings at upload time
+        #      and uses a different (stable) code path at synth time.
+        #      See scripts/upload_voices.sh for the variant catalog.
+        #
+        # So: we accept `instructions` for forward compatibility
+        # (someone may eventually patch vllm-omini), but we DO NOT
+        # transform it into ref_text. Clients needing style control
+        # should use a pre-uploaded variant voice instead.
         if instructions:
-            payload["ref_text"] = (
-                f"You are a helpful assistant. {instructions}。<|endofprompt|>"
-            )
-            payload["instructions"] = instructions  # forward-compat
+            payload["instructions"] = instructions  # forward-compat only
 
         logger.info(
             "vllm-omini synth request_id=%s voice=%s text_len=%d",
