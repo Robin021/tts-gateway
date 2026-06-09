@@ -1,0 +1,25 @@
+# Don't ship local-only artifacts into the image.
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+.git
+.gitignore
+.DS_Store
+
+# Tests aren't needed at runtime — keep the image small.
+tests/
+
+# Local artifacts
+install_h20.sh
+e2e_run_*.log
+voice_upload_*.log
+*.pcm
+female_test.wav
+male_test.wav
+linzhiling_test.wav
+
+# Don't ship the bundled voice samples either — those are bootstrap
+# fixtures, not runtime data.
+scripts/voices.tar.gz

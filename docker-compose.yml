@@ -1,0 +1,34 @@
+# docker-compose for tts-gateway alongside an existing vllm-omini container.
+#
+# Usage:
+#   1. Copy .env.example to .env and edit GATEWAY_AUTH_TOKEN
+#   2. docker compose up -d
+#   3. docker compose logs -f tts-gateway
+#
+# This compose file ONLY manages the gateway. We do NOT define the
+# vllm-omini service here — your team already runs cosyvoice3-tts
+# manually. The gateway connects to vllm-omini via the host network.
+
+services:
+  tts-gateway:
+    build: .
+    image: tts-gateway:latest
+    container_name: tts-gateway
+    restart: always
+    # Use host network so localhost:8091 (vllm-omini) is reachable
+    # without container linking. Trade-off: the container shares the
+    # host's network stack (no port mapping), but in this single-machine
+    # deployment that's exactly what we want.
+    network_mode: host
+    environment:
+      VLLM_OMINI_URL: ${VLLM_OMINI_URL:-http://localhost:8091}
+      VLLM_OMINI_MODEL: ${VLLM_OMINI_MODEL:-cosyvoice3}
+      VLLM_OMINI_VOICE: ${VLLM_OMINI_VOICE:-female}
+      GATEWAY_AUTH_TOKEN: ${GATEWAY_AUTH_TOKEN:?set GATEWAY_AUTH_TOKEN in .env}
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/docs', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

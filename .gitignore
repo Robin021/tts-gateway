@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+*.egg
+
+# Local artifacts (don't commit)
+install_h20.sh
+e2e_run_*.log
+voice_upload_*.log
+/tmp/
+
+# Test audio outputs
+*.pcm
+female_test.wav
+male_test.wav
+linzhiling_test.wav
+
+# OS
+.DS_Store
