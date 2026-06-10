@@ -8,6 +8,7 @@ venv/
 *.egg
 
 # Local artifacts (don't commit)
+artifacts/
 install_h20.sh
 e2e_run_*.log
 voice_upload_*.log
@@ -15,6 +16,7 @@ voice_upload_*.log
 
 # Test audio outputs
 *.pcm
+test_*.wav
 female_test.wav
 male_test.wav
 linzhiling_test.wav

@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TTS Gateway Test Console</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #171a1f;
+      --muted: #68707d;
+      --line: #d9dde4;
+      --panel: #ffffff;
+      --paper: #f5f6f2;
+      --accent: #0f6b5f;
+      --accent-dark: #0a5148;
+      --warn: #b45309;
+      --bad: #b42318;
+      --good: #137333;
+      --shadow: 0 10px 25px rgba(22, 29, 37, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(0,0,0,0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 22px 22px;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0;
+    }
+
+    header {
+      padding: 22px 28px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(245, 246, 242, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(330px, 460px) minmax(420px, 1fr);
+      gap: 18px;
+      padding: 18px 28px 28px;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbf8;
+      font-weight: 800;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .body { padding: 14px; }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: #2c3340;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #c7ced8;
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      padding: 9px 10px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 136px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 107, 95, 0.12);
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid #c7ced8;
+      border-radius: 7px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .segmented button {
+      border: 0;
+      border-right: 1px solid #c7ced8;
+      background: #fff;
+      padding: 10px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      color: #364152;
+    }
+
+    .segmented button:last-child { border-right: 0; }
+    .segmented button.active { background: var(--accent); color: #fff; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .checkrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      color: #364152;
+      font-size: 13px;
+    }
+
+    .checkrow input {
+      width: auto;
+      margin: 0;
+      box-shadow: none;
+    }
+
+    button.action {
+      border: 1px solid var(--accent-dark);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+      padding: 10px 12px;
+    }
+
+    button.secondary {
+      border: 1px solid #c7ced8;
+      border-radius: 6px;
+      background: #fff;
+      color: #243041;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      padding: 10px 12px;
+    }
+
+    button.danger {
+      border-color: #8c1d18;
+      background: var(--bad);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(110px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 11px;
+      background: #fbfbf8;
+      min-height: 64px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 7px;
+      font-size: 18px;
+    }
+
+    audio {
+      width: 100%;
+      margin: 8px 0 12px;
+    }
+
+    .log {
+      height: 360px;
+      overflow: auto;
+      border: 1px solid #c7ced8;
+      border-radius: 7px;
+      background: #101418;
+      color: #d6eadf;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--warn);
+    }
+
+    .dot.ok { background: var(--good); }
+    .dot.bad { background: var(--bad); }
+
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; padding: 14px; }
+      header { padding: 18px 14px 10px; }
+      .status { grid-template-columns: 1fr 1fr; }
+      .grid3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TTS Gateway Test Console</h1>
+    <div class="subtitle">HTTP synthesis, WebSocket streaming, runtime instructions, and cancel testing from one local panel.</div>
+  </header>
+
+  <main>
+    <section>
+      <div class="section-head">
+        <span>Request</span>
+        <span class="pill"><span id="healthDot" class="dot"></span><span id="healthText">idle</span></span>
+      </div>
+      <div class="body">
+        <label for="gatewayUrl">Gateway URL</label>
+        <input id="gatewayUrl" spellcheck="false">
+
+        <label for="token">Bearer token</label>
+        <input id="token" type="password" spellcheck="false">
+
+        <div class="grid2">
+          <div>
+            <label for="voice">Voice</label>
+            <select id="voice">
+              <option value="female">female</option>
+              <option value="male">male</option>
+              <option value="linzhiling">linzhiling</option>
+            </select>
+          </div>
+          <div>
+            <label for="model">Model</label>
+            <input id="model" value="cosyvoice3">
+          </div>
+        </div>
+
+        <label for="instructions">Instructions</label>
+        <input id="instructions" value="请用广东话表达,语气自然一点">
+
+        <label for="text">Text</label>
+        <textarea id="text">今天我们一起去喝早茶,顺便聊聊最近发生的事情吧</textarea>
+
+        <label>Mode</label>
+        <div class="segmented">
+          <button id="modeHttp" class="active" type="button">HTTP</button>
+          <button id="modeWs" type="button">WebSocket</button>
+        </div>
+
+        <div class="grid3">
+          <div>
+            <label for="responseFormat">HTTP format</label>
+            <select id="responseFormat">
+              <option value="wav">wav</option>
+              <option value="pcm">pcm</option>
+            </select>
+          </div>
+          <div>
+            <label for="chunkSize">WS chunk chars</label>
+            <input id="chunkSize" type="number" min="0" value="0">
+          </div>
+          <div>
+            <label for="chunkDelay">WS delay ms</label>
+            <input id="chunkDelay" type="number" min="0" value="120">
+          </div>
+        </div>
+
+        <div class="checkrow">
+          <input id="httpStream" type="checkbox">
+          <span>HTTP stream=true</span>
+        </div>
+
+        <div class="checkrow">
+          <input id="autoplay" type="checkbox" checked>
+          <span>Autoplay result when done</span>
+        </div>
+
+        <div class="toolbar">
+          <button id="loadVoices" class="secondary" type="button">Load voices</button>
+          <button id="start" class="action" type="button">Start</button>
+          <button id="cancel" class="action danger" type="button" disabled>Cancel WS</button>
+          <button id="clear" class="secondary" type="button">Clear log</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <span>Result</span>
+        <a id="download" class="pill" href="#" download="tts-test.wav">download wav</a>
+      </div>
+      <div class="body">
+        <div class="status">
+          <div class="metric"><span>Mode</span><strong id="mMode">HTTP</strong></div>
+          <div class="metric"><span>TTFB</span><strong id="mTtfb">-</strong></div>
+          <div class="metric"><span>Bytes</span><strong id="mBytes">0</strong></div>
+          <div class="metric"><span>Duration</span><strong id="mDuration">-</strong></div>
+        </div>
+        <audio id="player" controls></audio>
+        <div id="log" class="log"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      mode: "http",
+      ws: null,
+      wsAudio: [],
+      wsStartedAt: 0,
+      wsFirstAudioAt: 0,
+      objectUrl: null,
+    };
+
+    function log(line, data) {
+      const time = new Date().toLocaleTimeString();
+      const suffix = data === undefined ? "" : " " + JSON.stringify(data);
+      $("log").textContent += `[${time}] ${line}${suffix}\n`;
+      $("log").scrollTop = $("log").scrollHeight;
+    }
+
+    function setHealth(kind, text) {
+      $("healthDot").className = `dot ${kind || ""}`;
+      $("healthText").textContent = text;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      $("modeHttp").classList.toggle("active", mode === "http");
+      $("modeWs").classList.toggle("active", mode === "ws");
+      $("mMode").textContent = mode.toUpperCase();
+      $("cancel").disabled = true;
+    }
+
+    function updateMetric(bytes, ttfbMs, durationMs) {
+      $("mBytes").textContent = String(bytes || 0);
+      $("mTtfb").textContent = ttfbMs ? `${Math.round(ttfbMs)}ms` : "-";
+      $("mDuration").textContent = durationMs ? `${(durationMs / 1000).toFixed(2)}s` : "-";
+    }
+
+    function pcmToWav(pcmBytes, sampleRate = 24000) {
+      const header = new ArrayBuffer(44);
+      const view = new DataView(header);
+      const write = (offset, text) => {
+        for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
+      };
+      write(0, "RIFF");
+      view.setUint32(4, 36 + pcmBytes.byteLength, true);
+      write(8, "WAVE");
+      write(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      write(36, "data");
+      view.setUint32(40, pcmBytes.byteLength, true);
+      return new Blob([header, pcmBytes], { type: "audio/wav" });
+    }
+
+    function playBlob(blob) {
+      if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+      state.objectUrl = URL.createObjectURL(blob);
+      $("player").src = state.objectUrl;
+      $("download").href = state.objectUrl;
+      if ($("autoplay").checked) $("player").play().catch(() => {});
+    }
+
+    function settings() {
+      return {
+        gateway_url: $("gatewayUrl").value.trim(),
+        token: $("token").value.trim(),
+        model: $("model").value.trim() || "cosyvoice3",
+        input: $("text").value,
+        voice: $("voice").value,
+        instructions: $("instructions").value.trim(),
+        response_format: $("responseFormat").value,
+        stream: $("httpStream").checked,
+        request_id: `ui-${Date.now()}`
+      };
+    }
+
+    async function loadDefaults() {
+      const resp = await fetch("/api/defaults");
+      const data = await resp.json();
+      $("gatewayUrl").value = data.gateway_url || "http://221.194.152.20:8000";
+      $("token").value = data.token || "";
+      setHealth(data.token ? "ok" : "", data.token ? "token loaded" : "token empty");
+    }
+
+    async function loadVoices() {
+      const body = settings();
+      log("loading voices", { gateway_url: body.gateway_url });
+      const resp = await fetch("/api/voices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gateway_url: body.gateway_url, token: body.token })
+      });
+      const text = await resp.text();
+      if (!resp.ok) throw new Error(text);
+      const data = JSON.parse(text);
+      const current = $("voice").value;
+      $("voice").innerHTML = "";
+      for (const name of data.voices || []) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        $("voice").appendChild(opt);
+      }
+      if ([...$("voice").options].some((o) => o.value === current)) $("voice").value = current;
+      log("voices loaded", data.voices || []);
+      setHealth("ok", "voices ok");
+    }
+
+    async function startHttp() {
+      const body = settings();
+      const t0 = performance.now();
+      setHealth("", "http running");
+      updateMetric(0, 0, 0);
+      log("HTTP start", body);
+      const resp = await fetch("/api/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const buf = await resp.arrayBuffer();
+      const elapsed = performance.now() - t0;
+      if (!resp.ok) {
+        const errText = new TextDecoder().decode(buf);
+        throw new Error(errText);
+      }
+      const blob = new Blob([buf], { type: resp.headers.get("content-type") || "audio/wav" });
+      playBlob(blob);
+      const bytes = buf.byteLength;
+      const duration = Math.max(0, bytes - 44) / 2 / 24000 * 1000;
+      updateMetric(bytes, elapsed, duration);
+      setHealth("ok", "http done");
+      log("HTTP done", { bytes, elapsed_ms: Math.round(elapsed), playback_duration_s: (duration / 1000).toFixed(2) });
+    }
+
+    function wsUrlFromHttp(url) {
+      let ws = url.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+      return ws.replace(/\/$/, "") + "/ws/tts";
+    }
+
+    async function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function sendWsText(ws, text) {
+      const chunkSize = Math.max(0, Number($("chunkSize").value || 0));
+      const delay = Math.max(0, Number($("chunkDelay").value || 0));
+      if (!chunkSize) {
+        ws.send(JSON.stringify({ type: "tts.text", text }));
+        return;
+      }
+      for (let i = 0; i < text.length; i += chunkSize) {
+        ws.send(JSON.stringify({ type: "tts.text", text: text.slice(i, i + chunkSize) }));
+        if (delay) await sleep(delay);
+      }
+    }
+
+    async function startWs() {
+      const body = settings();
+      const wsUrl = wsUrlFromHttp(body.gateway_url);
+      state.wsAudio = [];
+      state.wsFirstAudioAt = 0;
+      state.wsStartedAt = performance.now();
+      updateMetric(0, 0, 0);
+      setHealth("", "ws connecting");
+      log("WS connect", { wsUrl });
+
+      const ws = new WebSocket(wsUrl, "tts.v1");
+      ws.binaryType = "arraybuffer";
+      state.ws = ws;
+      $("cancel").disabled = false;
+
+      ws.onopen = async () => {
+        setHealth("", "ws auth");
+        ws.send(JSON.stringify({ type: "auth", token: body.token, client_id: "local-ui" }));
+      };
+
+      ws.onmessage = async (event) => {
+        if (typeof event.data !== "string") {
+          if (!state.wsFirstAudioAt) state.wsFirstAudioAt = performance.now();
+          state.wsAudio.push(event.data);
+          const bytes = state.wsAudio.reduce((n, b) => n + b.byteLength, 0);
+          updateMetric(bytes, state.wsFirstAudioAt - state.wsStartedAt, bytes / 2 / 24000 * 1000);
+          return;
+        }
+
+        const msg = JSON.parse(event.data);
+        log("WS event", msg);
+        if (msg.type === "auth.ok") {
+          ws.send(JSON.stringify({
+            type: "tts.start",
+            request_id: body.request_id,
+            voice: body.voice,
+            instructions: body.instructions || undefined
+          }));
+          await sendWsText(ws, body.input);
+          ws.send(JSON.stringify({ type: "tts.end" }));
+          setHealth("", "ws running");
+        }
+        if (msg.type === "tts.error") {
+          setHealth("bad", "ws error");
+          $("cancel").disabled = true;
+        }
+        if (msg.type === "tts.cancelled") {
+          finalizeWs(true);
+        }
+        if (msg.type === "tts.done") {
+          finalizeWs(false, msg.generated_duration_ms);
+        }
+      };
+
+      ws.onerror = () => {
+        setHealth("bad", "ws error");
+        log("WS socket error");
+        $("cancel").disabled = true;
+      };
+
+      ws.onclose = () => {
+        log("WS closed");
+        $("cancel").disabled = true;
+      };
+    }
+
+    function finalizeWs(cancelled, serverDurationMs) {
+      const bytes = state.wsAudio.reduce((n, b) => n + b.byteLength, 0);
+      const joined = new Uint8Array(bytes);
+      let offset = 0;
+      for (const part of state.wsAudio) {
+        joined.set(new Uint8Array(part), offset);
+        offset += part.byteLength;
+      }
+      const blob = pcmToWav(joined.buffer, 24000);
+      playBlob(blob);
+      updateMetric(bytes, state.wsFirstAudioAt ? state.wsFirstAudioAt - state.wsStartedAt : 0, serverDurationMs || bytes / 2 / 24000 * 1000);
+      setHealth(cancelled ? "" : "ok", cancelled ? "ws cancelled" : "ws done");
+      $("cancel").disabled = true;
+      log(cancelled ? "WS cancelled" : "WS done", { bytes });
+    }
+
+    $("modeHttp").onclick = () => setMode("http");
+    $("modeWs").onclick = () => setMode("ws");
+    $("loadVoices").onclick = () => loadVoices().catch((e) => { setHealth("bad", "voices failed"); log("voices failed", e.message); });
+    $("clear").onclick = () => { $("log").textContent = ""; };
+    $("cancel").onclick = () => {
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: "tts.cancel" }));
+        setHealth("", "cancel sent");
+        log("WS cancel sent");
+      }
+    };
+    $("start").onclick = () => {
+      if (state.mode === "http") startHttp().catch((e) => { setHealth("bad", "http failed"); log("HTTP failed", e.message); });
+      else startWs().catch((e) => { setHealth("bad", "ws failed"); log("WS failed", e.message); });
+    };
+
+    loadDefaults().then(loadVoices).catch((e) => log("initial load failed", e.message));
+  </script>
+</body>
+</html>

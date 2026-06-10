@@ -966,14 +966,36 @@ async def _handle_end(
 
 def _build_default_app() -> FastAPI:
     backend_url = os.environ.get("VLLM_OMINI_URL")
+    cosyvoice_url = os.environ.get("COSYVOICE_SVC_URL")
+    model = os.environ.get("VLLM_OMINI_MODEL", "cosyvoice3")
+    default_voice = os.environ.get("VLLM_OMINI_VOICE", "female")
+
+    fast = None
+    instruct = None
+
     if backend_url:
-        # Real backend configured -> wire up VllmOminiEngine.
         from .engine_vllm_omini import VllmOminiEngine
-        engine: TtsBackend = VllmOminiEngine(
-            base_url=backend_url,
-            model=os.environ.get("VLLM_OMINI_MODEL", "cosyvoice3"),
-            default_voice=os.environ.get("VLLM_OMINI_VOICE", "female"),
+        fast = VllmOminiEngine(
+            base_url=backend_url, model=model, default_voice=default_voice,
         )
+    if cosyvoice_url:
+        # cosyvoice-svc speaks the same /v1/audio/speech protocol, so we
+        # reuse the same HTTP client class, just pointed at it. This is
+        # the backend that actually honors `instructions` (instruct2).
+        from .engine_vllm_omini import VllmOminiEngine
+        instruct = VllmOminiEngine(
+            base_url=cosyvoice_url, model=model, default_voice=default_voice,
+        )
+
+    engine: TtsBackend
+    if fast and instruct:
+        # Both: route by whether instructions is present.
+        from .engine_routing import RoutingEngine
+        engine = RoutingEngine(fast=fast, instruct=instruct)
+    elif instruct:
+        engine = instruct  # only cosyvoice-svc configured -> use for all
+    elif fast:
+        engine = fast      # only vllm-omini configured
     else:
         # Dev / demo mode -> silence-emitting MockEngine.
         engine = MockEngine()

@@ -1,0 +1,14 @@
+{
+  "female": {
+    "wav": "voices/female.wav",
+    "prompt_text": "希望你以后能够做的比我还好哟"
+  },
+  "male": {
+    "wav": "voices/male.wav",
+    "prompt_text": "在那之后完全收购那家公司,因此保持管理层的一致性,利益与即将加入家族的资产保持一致。这就是我们有时不买下全部的原因。"
+  },
+  "linzhiling": {
+    "wav": "voices/linzhiling.wav",
+    "prompt_text": "现在这通是甜蜜的来电哦!现在请先把所有的不愉快抛开,穿起美丽的衣服,带着幸福的微笑,还有你最愉快的心情,接电话咯!"
+  }
+}

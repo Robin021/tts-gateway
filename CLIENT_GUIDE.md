@@ -88,28 +88,29 @@ with httpx.stream(
 |---|---|---|---|
 | `input` | string | ✓ | 要合成的文本(UTF-8) |
 | `voice` | string | | 音色名称,见"可选音色"。不传用默认 `female` |
-| `instructions` | string | | ⚠️ **当前后端不支持运行时指令**。要切换情感/方言/语速,**用预上传的 voice 变体**——见下方"通过 voice 切换风格" |
+| `instructions` | string | | 可选。方言/情感/语速等自然语言指令,例如 `请用广东话表达`、`用悲伤的语气朗读` |
 | `response_format` | `"pcm"` / `"wav"` | | 默认 `pcm` |
 | `stream` | bool | | 默认 `false` |
 | `model` | string | | OpenAI SDK 兼容用,服务端忽略 |
 | `speed` | number | | OpenAI SDK 兼容用,服务端忽略 |
 | `request_id` | string | | 客户端可选追踪 ID |
 
-### 通过 voice 切换风格(方言/情感/语速)
+### 指令和 voice 变体
 
-⚠️ **当前后端 (cosyvoice3 + vllm-omini) 的 `instructions` 参数不可靠**:vllm-omini 在 cosyvoice3 模型路径上没接通这个字段,实测 per-request 注入会**丢字 / 乱码**。
+当前部署已经接入两个后端:
 
-唯一稳定的办法是**预上传 voice 变体** —— 把指令固化进 voice 的 ref_text。客户端通过 `voice` 字段切换:
+- 不带 `instructions` → 走 vllm-omini,速度快
+- 带 `instructions` → 走官方 CosyVoice instruct2 服务,支持方言/情感/语速
 
 ```bash
-# 不要这样写(不稳定):
-{"input": "...", "voice": "female", "instructions": "请用广东话"}
+# 推荐: 原始音色 + 运行时指令
+{"input": "...", "voice": "female", "instructions": "请用广东话表达"}
 
-# 这样写(稳定):
+# 兼容旧方案: 预上传的 voice 变体仍然可用
 {"input": "...", "voice": "female_cantonese"}
 ```
 
-实测可用变体(后端预上传):
+已上传 voice:
 
 | voice | 效果 |
 |---|---|
@@ -128,9 +129,7 @@ curl http://<gateway-host>:8000/v1/audio/voices \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-**新增风格**: 找运维加 voice 变体(参考音频 + 指令 → 新 voice 名),返回你一个新名字。
-
-**未来**: 当 vllm-omini 在 cosyvoice3 模型路径上正确实现 `instructions` 字段后,客户端代码里可以从 `voice="female_cantonese"` 改回 `voice="female" + instructions="请用广东话"`。
+新增风格优先用 `instructions`。只有需要固定成一个可复用名字时,再找运维加 voice 变体。
 
 ### 响应
 
@@ -197,6 +196,7 @@ ws.onopen = () => {
     type: "tts.start",
     request_id: "req-001",
     voice: "female",        // 见下面"可选音色"
+    instructions: "请用广东话表达", // 可选
   }));
 
   // 3. 推送文本(可以分多次,LLM 流式吐字时正合适)
