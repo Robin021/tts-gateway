@@ -35,7 +35,7 @@ API
 VOICE REGISTRY (voices.json)
 ----------------------------
     {
-      "female":  {"wav": "voices/female.wav",  "prompt_text": "希望你以后能够做的比我还好哟"},
+      "female":  {"wav": "voices/female.wav",  "prompt_text": "今天上海晴空万里，蓝天白云，体感温度很舒服。..."},
       "male":    {"wav": "voices/male.wav",    "prompt_text": "..."},
       ...
     }
