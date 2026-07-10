@@ -163,6 +163,71 @@ def test_http_instructions_field_optional():
     asyncio.run(_())
 
 
+class FailingEngine(MockEngine):
+    """Engine that raises before yielding any audio — simulates vllm-omini
+    returning 400 (e.g. unknown voice) at stream start."""
+
+    def __init__(self, message="vllm-omini HTTP 400: Unknown voice 'nope'", **kw):
+        super().__init__(**kw)
+        self.message = message
+
+    async def stream_tts(self, *, request_id, text_iter, voice,
+                         prompt_audio_id, instructions=None):
+        # Drain text like the real engine does, then fail.
+        async for _ in text_iter:
+            pass
+        raise RuntimeError(self.message)
+        yield b""  # pragma: no cover — makes this an async generator
+
+
+class EmptyEngine(MockEngine):
+    """Engine that completes without producing any audio."""
+
+    async def stream_tts(self, *, request_id, text_iter, voice,
+                         prompt_audio_id, instructions=None):
+        async for _ in text_iter:
+            pass
+        return
+        yield b""  # pragma: no cover — makes this an async generator
+
+
+def test_http_stream_engine_error_is_not_silent_200():
+    """THE bug users hit: stream=true + engine error used to return
+    200 with an empty body. It must now be a real error status."""
+    async def _():
+        app = _make_app(engine=FailingEngine())
+        r = await _post(app, {"input": "你好", "voice": "nope", "stream": True})
+        assert r.status_code == 400  # unknown voice -> client error
+        assert "Unknown voice" in r.text
+    asyncio.run(_())
+
+
+def test_http_stream_backend_error_is_502():
+    async def _():
+        app = _make_app(engine=FailingEngine(message="engine exploded"))
+        r = await _post(app, {"input": "你好", "voice": "female", "stream": True})
+        assert r.status_code == 502
+    asyncio.run(_())
+
+
+def test_http_nonstream_engine_error_is_not_500():
+    """Non-stream path should also surface engine errors properly."""
+    async def _():
+        app = _make_app(engine=FailingEngine())
+        r = await _post(app, {"input": "你好", "voice": "nope", "stream": False})
+        assert r.status_code == 400
+    asyncio.run(_())
+
+
+def test_http_empty_audio_is_502_not_empty_200():
+    async def _():
+        app = _make_app(engine=EmptyEngine())
+        r = await _post(app, {"input": "你好", "voice": "female", "stream": True})
+        assert r.status_code == 502
+        assert "no audio" in r.text
+    asyncio.run(_())
+
+
 def test_openapi_schema_includes_speech_route():
     """Make sure /docs and /openapi.json are discoverable + populated."""
     async def _():

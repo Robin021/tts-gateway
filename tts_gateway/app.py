@@ -494,6 +494,54 @@ def create_app(
         client_request_id = body.request_id or f"http-{int(time.time()*1000)}"
         engine_req_id = await request_id_factory.make("http", client_request_id)
 
+        media_type = "audio/wav" if response_format == "wav" else "audio/pcm"
+
+        gen = engine.stream_tts(
+            request_id=engine_req_id,
+            text_iter=_text_iter(),
+            voice=voice or "default",
+            prompt_audio_id=voice,  # treat voice as the speaker name
+            instructions=body.instructions,
+        )
+
+        # PRIME the generator: pull the first audio chunk BEFORE sending
+        # response headers. Without this, an engine error (e.g. unknown
+        # voice -> vllm 400) surfaces inside the StreamingResponse
+        # generator AFTER the 200 status line is already committed — the
+        # client then sees "200 OK with zero bytes", which is exactly the
+        # bug users reported. Priming turns those into real 4xx/5xx.
+        first_chunk: Optional[bytes] = None
+        try:
+            async for c in gen:
+                if c:
+                    first_chunk = c
+                    break
+        except Exception as exc:
+            scheduler.release()
+            msg = str(exc)
+            # Voice-not-found is a client error; everything else is the
+            # backend's fault.
+            is_client_err = "unknown voice" in msg.lower()
+            logger.warning(
+                "http synth failed before first chunk request_id=%s: %s",
+                engine_req_id, msg,
+            )
+            raise HTTPException(
+                status_code=400 if is_client_err else 502,
+                detail=msg[:500],
+            )
+
+        if first_chunk is None:
+            # Engine produced no audio at all (empty text or silent
+            # failure). Don't pretend success with an empty 200 stream.
+            scheduler.release()
+            raise HTTPException(
+                status_code=502,
+                detail="engine produced no audio (empty input or backend error; "
+                       "check gateway logs for request_id "
+                       f"{engine_req_id})",
+            )
+
         async def _audio_stream():
             try:
                 if response_format == "wav":
@@ -506,19 +554,18 @@ def create_app(
                         channels=1,
                         bytes_per_sample=2,
                     )
-                async for chunk in engine.stream_tts(
-                    request_id=engine_req_id,
-                    text_iter=_text_iter(),
-                    voice=voice or "default",
-                    prompt_audio_id=voice,  # treat voice as the speaker name
-                    instructions=body.instructions,
-                ):
+                yield first_chunk
+                async for chunk in gen:
                     if chunk:
                         yield chunk
+            except Exception:
+                # Mid-stream failure after headers are sent: we can't
+                # change the status anymore; log loudly so it's traceable.
+                logger.exception(
+                    "http synth failed mid-stream request_id=%s", engine_req_id,
+                )
             finally:
                 scheduler.release()
-
-        media_type = "audio/wav" if response_format == "wav" else "audio/pcm"
 
         if stream:
             return StreamingResponse(_audio_stream(), media_type=media_type)
