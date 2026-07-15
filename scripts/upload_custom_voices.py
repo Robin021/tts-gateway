@@ -43,48 +43,66 @@ PREFIX = "You are a helpful assistant.<|endofprompt|>"
 def _trim_wav_and_text(
     wav_path: Path, transcript: str, max_seconds: float
 ) -> tuple[bytes, str, float]:
-    """If the wav is longer than max_seconds, trim it and proportionally
-    truncate the transcript to the nearest sentence boundary.
+    """Return (wav_bytes, transcript, duration_seconds), trimming if needed.
 
-    Returns (wav_bytes, transcript, duration_seconds).
-    CosyVoice actually clones better from a short clean clip (~5-15s),
-    so trimming a 40s reference is not a quality loss.
+    Robust against bogus WAV headers: files produced by streaming
+    pipelines often carry a data-chunk size of 0xFFFFFFFF ("unknown
+    length"), which makes wave report an absurd nframes (~25 hours).
+    We therefore read the ACTUAL frames (clamped at EOF), compute the
+    true duration from what we read, and always re-wrap into a clean
+    header so the engine never sees the bogus one.
+
+    If true duration exceeds max_seconds, both audio and transcript are
+    trimmed (transcript proportionally, snapped to punctuation).
+    CosyVoice clones best from short clean clips (~5-15s), so trimming
+    is not a quality loss.
     """
     with wave.open(str(wav_path), "rb") as w:
         n_channels = w.getnchannels()
         sampwidth = w.getsampwidth()
         framerate = w.getframerate()
-        n_frames = w.getnframes()
-        dur = n_frames / framerate
-        if dur <= max_seconds:
-            return wav_path.read_bytes(), transcript, dur
+        header_frames = w.getnframes()
+        # readframes clamps at EOF, so this yields the REAL payload even
+        # when the header lies about the length.
+        frames = w.readframes(header_frames)
 
-        keep_frames = int(max_seconds * framerate)
-        w.rewind()
-        frames = w.readframes(keep_frames)
+    bytes_per_frame = n_channels * sampwidth
+    true_frames = len(frames) // bytes_per_frame
+    true_dur = true_frames / framerate
 
-    # Re-wrap trimmed frames into a valid WAV.
+    if header_frames != true_frames:
+        print(f"  [note] {wav_path.name}: header claims "
+              f"{header_frames/framerate:.0f}s but payload is "
+              f"{true_dur:.1f}s — rewrapping with a clean header")
+
+    trimmed = False
+    if true_dur > max_seconds:
+        keep = int(max_seconds * framerate) * bytes_per_frame
+        frames = frames[:keep]
+        trimmed = True
+
+    # Always re-wrap: fixes bogus headers, harmless for good files.
     buf = io.BytesIO()
     with wave.open(buf, "wb") as out:
         out.setnchannels(n_channels)
         out.setsampwidth(sampwidth)
         out.setframerate(framerate)
         out.writeframes(frames)
-    trimmed_bytes = buf.getvalue()
+    wav_bytes = buf.getvalue()
 
-    # Truncate transcript proportionally, snapped to a sentence boundary.
-    ratio = max_seconds / dur
+    if not trimmed:
+        return wav_bytes, transcript, true_dur
+
+    # Truncate transcript proportionally to the TRUE duration, snapped
+    # to a sentence boundary.
+    ratio = max_seconds / true_dur
     approx_chars = max(1, int(len(transcript) * ratio))
     head = transcript[:approx_chars]
-    # snap back to the last sentence-ending punctuation within head
     m = list(re.finditer(r"[。！？!?.；;，,]", head))
     if m:
-        cut = m[-1].end()
-        head = head[:cut]
-    trimmed_text = head.strip()
-    if not trimmed_text:
-        trimmed_text = transcript[:approx_chars].strip()
-    return trimmed_bytes, trimmed_text, max_seconds
+        head = head[: m[-1].end()]
+    trimmed_text = head.strip() or transcript[:approx_chars].strip()
+    return wav_bytes, trimmed_text, max_seconds
 
 
 def _multipart(fields: dict, files: dict) -> tuple[bytes, str]:
