@@ -203,7 +203,7 @@ End-to-end through the gateway, with `cosyvoice3` running on H20:
 
 | Metric | Value | Notes |
 |---|---|---|
-| TTFB (`tts.start`→first audio byte) | ~600ms | This is vllm-omini's prefill latency. The gateway adds **<5ms** on top. |
+| TTFB (`tts.start`→first audio byte) | **scales with reference-audio length** — measured on v0.24.0: 14s ref → 941ms, 16s → 1318ms, 26s → 1585ms (≈7s ref extrapolates to ~650-800ms) | This is vllm-omni's prefill latency (longer reference = more prompt speech tokens). The gateway adds **<5ms** on top. **For latency-sensitive voices keep reference clips 8-12s.** |
 | `tts.cancelled` ack latency | ~1ms | Gateway protocol layer is fast. |
 | Tail audio after `tts.cancel` | 600–1400ms (one chunk) | **vllm-omini limitation** — it emits in sentence-level segments. When the client cancels, the segment already in flight (in TCP/HTTP buffers) still arrives. The gateway cannot truncate this without changes inside vllm-omini. |
 | Concurrent sessions | Limited by vllm-omini's `--max-num-seqs` | Gateway defaults `max_concurrent_synthesis=32`. If vllm itself can only batch 1 request at a time, the second client waits. |
