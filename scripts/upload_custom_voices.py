@@ -176,6 +176,10 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="只打印,不上传")
     ap.add_argument("--max-seconds", type=float, default=28.0,
                     help="参考音频最大时长(秒),超过自动裁剪+截断文字稿。vllm-omini 上限 30s。")
+    ap.add_argument("--no-prefix", action="store_true",
+                    help="不给 ref_text 加 'You are a helpful assistant.<|endofprompt|>' 前缀。"
+                         "vllm-omni >= v0.24 (PR #4756) 服务端会自动加,再手动加会双重前缀,"
+                         "必须用本参数上传裸转写。v0.22 及更早则不要加本参数。")
     args = ap.parse_args()
 
     d = Path(args.dir)
@@ -206,7 +210,7 @@ def main() -> None:
         wav_bytes, transcript, dur = _trim_wav_and_text(
             wav, transcript, args.max_seconds
         )
-        ref_text = PREFIX + transcript
+        ref_text = transcript if args.no_prefix else PREFIX + transcript
         trimmed_note = "" if dur < args.max_seconds - 0.01 else f"(裁剪到 {dur:.0f}s)"
         print(f"[{name}]  dur={dur:.1f}s {trimmed_note}  ref_text_len={len(ref_text)}")
         if args.dry_run:
