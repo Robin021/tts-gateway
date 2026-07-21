@@ -329,6 +329,17 @@ synthesis throughput is bound by GPU.
 
 These are **not** in the gateway, they're in the layers around it:
 
+0. **vllm-omni v0.24 changed the default streaming format** (bit us in
+   production feedback): `POST /v1/audio/speech` with `stream=true` and
+   no explicit `stream_format` now returns an **SSE text stream**
+   (`event: speech.audio.delta` + base64 payloads) instead of raw PCM.
+   Clients playing that as pcm16 hear pure static. Fixes:
+   - clients calling vllm-omni **directly** must add
+     `"stream_format": "audio"` to the request body;
+   - clients going through **this gateway are unaffected** — the
+     gateway always sends `stream_format: "audio"` explicitly
+     (`engine_vllm_omini.py`).
+
 1. **Tail audio on cancel**: A chunk already in flight (typically
    600–1400ms of audio) will reach the client even after `tts.cancel`.
    The client should be prepared to discard audio after it has shown

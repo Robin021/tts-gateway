@@ -59,7 +59,9 @@ resp.stream_to_file("output.wav")
 
 ### 流式(低延迟)
 
-`stream: true` —— 服务端一边合成一边发,客户端拿到第一字节大约 600ms。
+`stream: true` —— 服务端一边合成一边发。两种流格式,用 `stream_format` 选:
+
+**方式 1: 裸音频流(默认,`stream_format: "audio"`)**
 
 ```python
 import httpx
@@ -82,6 +84,49 @@ with httpx.stream(
         play(chunk)
 ```
 
+**方式 2: SSE 事件流(`stream_format: "sse"`)**
+
+响应是 `text/event-stream`,音频以 base64 装在事件里。比裸流多两个好处:**流中途出错有 `error` 事件**(裸流只能默默断掉)、**结束有明确的 `done` 事件**(带总字节数,方便校验完整性)。
+
+```python
+import httpx, base64, json
+
+with httpx.stream(
+    "POST",
+    "http://<gateway-host>:8000/v1/audio/speech",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    json={
+        "input": "你好,这是 SSE 流式合成。",
+        "voice": "female",
+        "response_format": "pcm",   # sse 模式必须 pcm
+        "stream": True,
+        "stream_format": "sse",
+    },
+    timeout=None,
+) as resp:
+    resp.raise_for_status()
+    event = None
+    for line in resp.iter_lines():
+        if line.startswith("event: "):
+            event = line[7:]
+        elif line.startswith("data: "):
+            data = json.loads(line[6:])
+            if event == "speech.audio.delta":
+                play(base64.b64decode(data["audio"]))   # 24kHz mono pcm16
+            elif event == "speech.audio.done":
+                print("完成,总字节:", data["generated_bytes"])
+            elif event == "error":
+                raise RuntimeError(f'{data["code"]}: {data["message"]}')
+```
+
+事件契约:
+
+| event | data | 含义 |
+|---|---|---|
+| `speech.audio.delta` | `{"audio": "<base64 pcm16>"}` | 一段音频 |
+| `speech.audio.done` | `{"generated_bytes": N}` | 正常结束 |
+| `error` | `{"code": "...", "message": "..."}` | 流中途失败(收到后应停止播放) |
+
 ### 请求体字段
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -91,6 +136,7 @@ with httpx.stream(
 | `instructions` | string | | 可选。方言/情感/语速等自然语言指令,例如 `请用广东话表达`、`用悲伤的语气朗读` |
 | `response_format` | `"pcm"` / `"wav"` | | 默认 `pcm` |
 | `stream` | bool | | 默认 `false` |
+| `stream_format` | `"audio"` / `"sse"` | | 默认 `audio`(裸字节)。`sse` = 事件流,须配 `response_format=pcm` |
 | `model` | string | | OpenAI SDK 兼容用,服务端忽略 |
 | `speed` | number | | OpenAI SDK 兼容用,服务端忽略 |
 | `request_id` | string | | 客户端可选追踪 ID |

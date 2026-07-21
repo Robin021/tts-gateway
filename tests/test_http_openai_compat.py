@@ -228,6 +228,65 @@ def test_http_empty_audio_is_502_not_empty_200():
     asyncio.run(_())
 
 
+def test_http_sse_stream_format():
+    """stream_format=sse returns text/event-stream with base64 audio
+    deltas and a done event."""
+    async def _():
+        import base64
+        app = _make_app()
+        r = await _post(app, {
+            "input": "你好", "voice": "female",
+            "stream": True, "stream_format": "sse",
+        })
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/event-stream")
+
+        body = r.text
+        # Parse SSE events.
+        deltas, done = [], None
+        for block in body.strip().split("\n\n"):
+            lines = dict(
+                l.split(": ", 1) for l in block.split("\n") if ": " in l
+            )
+            if lines.get("event") == "speech.audio.delta":
+                deltas.append(json.loads(lines["data"]))
+            elif lines.get("event") == "speech.audio.done":
+                done = json.loads(lines["data"])
+
+        assert len(deltas) >= 1
+        # Audio decodes to real bytes.
+        pcm = b"".join(base64.b64decode(d["audio"]) for d in deltas)
+        assert len(pcm) > 0
+        assert done is not None
+        assert done["generated_bytes"] == len(pcm)
+    asyncio.run(_())
+
+
+def test_http_sse_requires_pcm():
+    async def _():
+        app = _make_app()
+        r = await _post(app, {
+            "input": "你好", "voice": "female",
+            "stream": True, "stream_format": "sse", "response_format": "wav",
+        })
+        assert r.status_code == 400
+        assert "pcm" in r.text
+    asyncio.run(_())
+
+
+def test_http_sse_engine_error_before_start_is_real_status():
+    """Priming still applies in SSE mode: pre-stream errors are real
+    HTTP errors, not a 200 SSE stream."""
+    async def _():
+        app = _make_app(engine=FailingEngine())
+        r = await _post(app, {
+            "input": "你好", "voice": "nope",
+            "stream": True, "stream_format": "sse",
+        })
+        assert r.status_code == 400
+    asyncio.run(_())
+
+
 def test_openapi_schema_includes_speech_route():
     """Make sure /docs and /openapi.json are discoverable + populated."""
     async def _():

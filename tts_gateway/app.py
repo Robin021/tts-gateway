@@ -113,6 +113,20 @@ class SpeechRequest(BaseModel):
                     "synthesized. When false (default), the server "
                     "buffers the full audio and returns it in one body.",
     )
+    stream_format: Literal["audio", "sse"] = Field(
+        default="audio",
+        description=(
+            "Only meaningful with `stream=true`.\n"
+            "- `audio` (default): raw audio bytes, chunked HTTP.\n"
+            "- `sse`: Server-Sent Events (`text/event-stream`). Each chunk "
+            "arrives as `event: speech.audio.delta` with "
+            "`data: {\"audio\": \"<base64 pcm16>\"}`; the stream ends with "
+            "`event: speech.audio.done` "
+            "(`data: {\"generated_bytes\": N}`). Mid-stream failures emit "
+            "`event: error` with `data: {\"code\", \"message\"}` — impossible "
+            "to signal in raw-audio mode. Requires `response_format=pcm`."
+        ),
+    )
     speed: Optional[float] = Field(
         default=None,
         description="Ignored — kept for OpenAI SDK compatibility.",
@@ -473,6 +487,13 @@ def create_app(
         voice = body.voice
         response_format = body.response_format
         stream = body.stream
+        want_sse = stream and body.stream_format == "sse"
+        if want_sse and response_format != "pcm":
+            raise HTTPException(
+                status_code=400,
+                detail="stream_format=sse requires response_format=pcm "
+                       "(audio deltas are base64 pcm16)",
+            )
 
         # Resolve concurrency slot the same way the WS path does, so HTTP
         # and WS clients share fairly. We don't use the queue-position
@@ -566,6 +587,50 @@ def create_app(
                 )
             finally:
                 scheduler.release()
+
+        def _sse_event(event: str, payload: dict) -> bytes:
+            return (
+                f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            ).encode("utf-8")
+
+        async def _sse_stream():
+            """Gateway-defined SSE envelope. Unlike raw-audio mode, this
+            can signal mid-stream failures (event: error) and completion
+            (event: speech.audio.done) explicitly."""
+            import base64
+            total = 0
+            try:
+                total += len(first_chunk)
+                yield _sse_event(
+                    "speech.audio.delta",
+                    {"audio": base64.b64encode(first_chunk).decode("ascii")},
+                )
+                async for chunk in gen:
+                    if not chunk:
+                        continue
+                    total += len(chunk)
+                    yield _sse_event(
+                        "speech.audio.delta",
+                        {"audio": base64.b64encode(chunk).decode("ascii")},
+                    )
+                yield _sse_event("speech.audio.done", {"generated_bytes": total})
+            except Exception as exc:  # noqa: BLE001
+                logger.exception(
+                    "http sse synth failed mid-stream request_id=%s", engine_req_id,
+                )
+                yield _sse_event(
+                    "error",
+                    {"code": "ENGINE_ERROR", "message": str(exc)[:300]},
+                )
+            finally:
+                scheduler.release()
+
+        if want_sse:
+            return StreamingResponse(
+                _sse_stream(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
 
         if stream:
             return StreamingResponse(_audio_stream(), media_type=media_type)
